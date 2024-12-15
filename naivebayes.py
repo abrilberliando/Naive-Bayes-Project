@@ -236,7 +236,7 @@ if uploaded_file:
         st.success(f"Kelas yang Diprediksi: {predicted_class}")
 
 
-st.subtittle(">>> Code By <<<")
+st.subheader(">>> Code By <<<")
 st.write("1. Abril Berliando Cahyariata (2301010186)")
 st.write("2. Septaro Travian Gadha (23081010270)")
 st.write("3. Alvino Dwi Nengku Wijaya (23081010284)")
