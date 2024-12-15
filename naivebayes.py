@@ -235,9 +235,10 @@ if uploaded_file:
         predicted_class = naive_bayes_predict(sample_to_predict, prior_probs, likelihoods_categorical, likelihoods_numerical, numerical_indices, class_labels)
         st.success(f"Kelas yang Diprediksi: {predicted_class}")
 
-st.subheader("                                              >>> Code By <<<")
-st.write("1. Abril Berliando Cahyariata (2301010186)")
-st.write("2. Septaro Travian Gadha (23081010270)")
-st.write("3. Alvino Dwi Nengku Wijaya (23081010284)")
-
+st.markdown("""
+<h3 style="text-align: center;">>>> Code By <<<</h3>
+<p style="text-align: center;">1. Abril Berliando Cahyariata (2301010186)</p>
+<p style="text-align: center;">2. Septaro Travian Gadha (23081010270)</p>
+<p style="text-align: center;">3. Alvino Dwi Nengku Wijaya (23081010284)</p>
+""", unsafe_allow_html=True)
     
