@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import math
 
-
 st.set_page_config(page_title="Klasifikasi Nasabah", page_icon=":money_with_wings:")
 # Fungsi-fungsi utama
 def calculate_prior_probabilities(data):
@@ -81,22 +80,36 @@ def calculate_attribute_probabilities(data, numerical_indices, categorical_indic
 
     # Rentang kustom untuk fitur numerik
     custom_ranges = {
-        # Format: index: [(min, max, label), ...]
-        0: [  # Usia
-            (17, 22, "17-22"),
-            (23, 28, "23-28"),
-            (29, 34, "29-34"),
-            (35, 40, "35-40"),
-            (41, float('inf'), ">40")
-        ],
-        7: [  # Tenor
-            (3, 4, "3-4 bulan"),
-            (5, 6, "5-6 bulan"),
-            (7, 8, "7-8 bulan"),
-            (9, 10, "9-10 bulan"),
-            (11, 12, "11-12 bulan")
-        ]
-    }
+    0: [  # Usia
+        (17, 22, "17-22"),
+        (23, 28, "23-28"),
+        (29, 34, "29-34"),
+        (35, 40, "35-40"),
+        (41, float('inf'), ">40")
+    ],
+    4: [  # Penghasilan
+        (2000000, 2749000, '2.000.000 - 2.749.000'),
+        (2750000, 3499000, '2.750.000 - 3.499.000'),
+        (3500000, 4249000, '3.500.000 - 4.249.000'),
+        (4250000, 4999999, '4.250.000 - 4.999.999'),
+        (5000000, float('inf'), '≥ 5.000.000')
+    ],
+    6: [  # Nilai Pinjaman
+        (1000000, 2499999, '1.000.000 - 2.499.999'),
+        (2500000, 3999999, '2.500.000 - 3.999.999'),
+        (4000000, 5499999, '4.000.000 - 5.499.999'),
+        (5500000, 6999999, '5.500.000 - 6.999.999'),
+        (7000000, float('inf'), '≥ 7.000.000')
+    ],
+    7: [  # Tenor
+        (3, 4, "3-4 bulan"),
+        (5, 6, "5-6 bulan"),
+        (7, 8, "7-8 bulan"),
+        (9, 10, "9-10 bulan"),
+        (11, 12, "11-12 bulan")
+    ]
+}
+
 
     # Probabilitas untuk fitur numerik dengan rentang kustom
     for index in numerical_indices:
