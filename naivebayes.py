@@ -165,7 +165,7 @@ def calculate_accuracy(confusion_matrix):
 # Streamlit UI
 st.title("Klasifikasi Kelayakan Nasabah💰")
 
-st.subheader("Download data >>> https://shorturl.at/mhMqk <<<")
+st.write("Download data >>> https://shorturl.at/mhMqk <<<")
 
 # File upload
 uploaded_file = st.file_uploader("Upload data training Nasabah📤", type=["xlsx"])
