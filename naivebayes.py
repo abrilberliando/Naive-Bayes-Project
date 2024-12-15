@@ -1,10 +1,8 @@
 import streamlit as st
 import pandas as pd
 import math
-try:
-    import openpyxl
-except ImportError:
-    raise ImportError("Library 'openpyxl' diperlukan untuk membaca file Excel. Install dengan 'pip install openpyxl'.")
+import openpyxl
+raise ImportError
 
 
 st.set_page_config(page_title="Klasifikasi Nasabah", page_icon=":money_with_wings:")
