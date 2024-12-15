@@ -235,11 +235,9 @@ if uploaded_file:
         predicted_class = naive_bayes_predict(sample_to_predict, prior_probs, likelihoods_categorical, likelihoods_numerical, numerical_indices, class_labels)
         st.success(f"Kelas yang Diprediksi: {predicted_class}")
 
-with st.container():
-    col1, col2, col3 = st.columns(3)
-    with col2: st.subheader(">>> Code By <<<", align="center")
-st.write("1. Abril Berliando Cahyariata (2301010186)", align="center")
-st.write("2. Septaro Travian Gadha (23081010270)", align="center")
-st.write("3. Alvino Dwi Nengku Wijaya (23081010284)", align="center")
+st.subheader("                                              >>> Code By <<<")
+st.write("1. Abril Berliando Cahyariata (2301010186)")
+st.write("2. Septaro Travian Gadha (23081010270)")
+st.write("3. Alvino Dwi Nengku Wijaya (23081010284)")
 
     
