@@ -236,9 +236,12 @@ if uploaded_file:
         st.success(f"Kelas yang Diprediksi: {predicted_class}")
 
 st.markdown("""
-<h3 style="text-align: center;">>>> Code By <<<</h3>
+<h3 style="text-align: center;">>>> Kelompok 2 <<<</h3>
 <p style="text-align: center;">1. Abril Berliando Cahyariata (2301010186)</p>
 <p style="text-align: center;">2. Septaro Travian Gadha (23081010270)</p>
 <p style="text-align: center;">3. Alvino Dwi Nengku Wijaya (23081010284)</p>
 """, unsafe_allow_html=True)
+
+
+#code by kelompok 2 |2301010186, 2301010270, 2301010284|
     
