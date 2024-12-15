@@ -237,8 +237,7 @@ if uploaded_file:
 
 with st.container():
     col1, col2, col3 = st.columns(3)
-    with col2:
-st.subheader(">>> Code By <<<", align="center")
+    with col2: st.subheader(">>> Code By <<<", align="center")
 st.write("1. Abril Berliando Cahyariata (2301010186)", align="center")
 st.write("2. Septaro Travian Gadha (23081010270)", align="center")
 st.write("3. Alvino Dwi Nengku Wijaya (23081010284)", align="center")
