@@ -143,11 +143,12 @@ def naive_bayes_probabilities(sample, prior_probs, attribute_probabilities, clas
 st.title("Klasifikasi Kelayakan Nasabah 💰")
 
 st.write("Petunjuk:")
-st.write("1. Upload data training dalam format Excel.")
-st.write("2. Program akan memproses data training dengan membagi atribut numerik ke dalam rentang kategori dan menghitung probabilitas prior serta likelihood.")
-st.write("3. Masukkan data testing secara manual melalui UI. Tidak perlu upload file test data.")
-st.write("4. Program akan menampilkan probabilitas tiap kelas dan kelas dengan probabilitas tertinggi sebagai hasil prediksi.")
-st.write("5. Program juga menampilkan hasil probabilitas tiap atribut berdasarkan data training yang diunggah.")
+st.write("1. Download data training terlebih dahulu : https://shorturl.at/mhMqk")
+st.write("2. Upload data training dalam format Excel.")
+st.write("3. Program akan memproses data training dengan membagi atribut numerik ke dalam rentang kategori dan menghitung probabilitas prior serta likelihood.")
+st.write("4. Masukkan data testing secara manual melalui UI. Tidak perlu upload file test data.")
+st.write("5. Program akan menampilkan probabilitas tiap kelas dan kelas dengan probabilitas tertinggi sebagai hasil prediksi.")
+st.write("6. Program juga menampilkan hasil probabilitas tiap atribut berdasarkan data training yang diunggah.")
 
 # Upload data training
 uploaded_file = st.file_uploader("Upload Data Training Nasabah (Excel)📤", type=["xlsx"])
