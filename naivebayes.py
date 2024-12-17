@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
-import math
 
 st.set_page_config(page_title="Klasifikasi Nasabah", page_icon=":money_with_wings:")
-# Fungsi-fungsi utama
+
+# Fungsi untuk menghitung probabilitas prior
 def calculate_prior_probabilities(data):
     total_samples = len(data)
     class_counts = {}
@@ -12,228 +12,219 @@ def calculate_prior_probabilities(data):
         class_counts[label] = class_counts.get(label, 0) + 1
     return {label: count / total_samples for label, count in class_counts.items()}
 
-def calculate_likelihoods_categorical(data, feature_indices, class_labels):
-    likelihoods = {}
-    for label in class_labels:
-        filtered_data = [sample for sample in data if sample[-1] == label]
-        total_count = len(filtered_data)
-        feature_likelihoods = {}
-        for index in feature_indices:
-            feature_counts = {}
-            for sample in filtered_data:
-                value = sample[index]
-                feature_counts[value] = feature_counts.get(value, 0) + 1
-            feature_likelihoods[index] = {value: count / total_count for value, count in feature_counts.items()}
-        likelihoods[label] = feature_likelihoods
-    return likelihoods
+# Fungsi untuk mengelompokkan nilai numerik ke dalam kategori
+def categorize_numerical_value(value, ranges):
+    for r in ranges:
+        min_val, max_val, label = r
+        if min_val <= value <= max_val:
+            return label
+    # Jika tidak masuk ke rentang manapun
+    return ranges[-1][2]
 
-def calculate_gaussian_probability(x, mean, std):
-    if std == 0:
-        return 1e-6 if x != mean else 1.0
-    exponent = math.exp(-((x - mean) ** 2) / (2 * (std ** 2)))
-    return (1 / (math.sqrt(2 * math.pi) * std)) * exponent
-
-def calculate_likelihoods_numerical(data, feature_indices, class_labels):
-    likelihoods = {}
-    for label in class_labels:
-        filtered_data = [sample for sample in data if sample[-1] == label]
-        feature_stats = {}
-        for index in feature_indices:
-            values = [float(sample[index]) for sample in filtered_data]
-            mean = sum(values) / len(values)
-            std = math.sqrt(sum((x - mean) ** 2 for x in values) / len(values))
-            feature_stats[index] = (mean, std)
-        likelihoods[label] = feature_stats
-    return likelihoods
-
-def naive_bayes_predict(sample, prior_probs, likelihoods_categorical, likelihoods_numerical, numerical_indices, class_labels):
-    probabilities = {}
-    for label in class_labels:
-        probability = prior_probs[label]
-        for index, value in enumerate(sample):
-            if index in numerical_indices:
-                mean, std = likelihoods_numerical[label][index]
-                probability *= calculate_gaussian_probability(float(value), mean, std)
-            else:
-                probability *= likelihoods_categorical[label][index].get(value, 1e-6)
-        probabilities[label] = probability
-    return max(probabilities, key=probabilities.get)
-
+# Fungsi untuk menghitung probabilitas likelihood setiap atribut
 def calculate_attribute_probabilities(data, numerical_indices, categorical_indices, class_labels):
     attribute_probabilities = {}
 
-    # Probabilitas untuk fitur kategorikal
-    for index in categorical_indices:
+    # Rentang kustom untuk fitur numerik
+    custom_ranges = {
+        0: [  # Usia
+            (17, 22, "17-22"),
+            (23, 28, "23-28"),
+            (29, 34, "29-34"),
+            (35, 40, "35-40"),
+            (41, float('inf'), ">40")
+        ],
+        4: [  # Penghasilan
+            (2000000, 2749000, '2.000.000 - 2.749.000'),
+            (2750000, 3499000, '2.750.000 - 3.499.000'),
+            (3500000, 4249000, '3.500.000 - 4.249.000'),
+            (4250000, 4999999, '4.250.000 - 4.999.999'),
+            (5000000, float('inf'), '≥ 5.000.000')
+        ],
+        6: [  # Nilai Pinjaman
+            (1000000, 2499999, '1.000.000 - 2.499.999'),
+            (2500000, 3999999, '2.500.000 - 3.999.999'),
+            (4000000, 5499999, '4.000.000 - 5.499.999'),
+            (5500000, 6999999, '5.500.000 - 6.999.999'),
+            (7000000, float('inf'), '≥ 7.000.000')
+        ],
+        7: [  # Tenor
+            (3, 4, "3-4 bulan"),
+            (5, 6, "5-6 bulan"),
+            (7, 8, "7-8 bulan"),
+            (9, 10, "9-10 bulan"),
+            (11, 12, "11-12 bulan")
+        ]
+    }
+
+    # Ubah nilai numerik di data menjadi kategori
+    processed_data = []
+    for sample in data:
+        new_sample = sample.copy()
+        for idx in numerical_indices:
+            val = float(new_sample[idx])
+            if idx in custom_ranges:
+                new_sample[idx] = categorize_numerical_value(val, custom_ranges[idx])
+            else:
+                # Jika tidak ada custom range, fallback bisa ditambahkan.
+                new_sample[idx] = str(val)
+        processed_data.append(new_sample)
+
+    # Hitung probabilitas tiap nilai atribut per kelas
+    for index in range(len(processed_data[0]) - 1):
         attribute_probabilities[index] = {}
         for label in class_labels:
-            filtered_data = [sample for sample in data if sample[-1] == label]
+            filtered_data = [sample for sample in processed_data if sample[-1] == label]
+            total_samples = len(filtered_data)
             value_counts = {}
             for sample in filtered_data:
                 value = sample[index]
                 value_counts[value] = value_counts.get(value, 0) + 1
-
-            total_samples = len(filtered_data)
+            
             attribute_probabilities[index][label] = {
-                value: count / total_samples
-                for value, count in value_counts.items()
+                val: count / total_samples for val, count in value_counts.items()
             }
-
-    # Rentang kustom untuk fitur numerik
-    custom_ranges = {
-    0: [  # Usia
-        (17, 22, "17-22"),
-        (23, 28, "23-28"),
-        (29, 34, "29-34"),
-        (35, 40, "35-40"),
-        (41, float('inf'), ">40")
-    ],
-    4: [  # Penghasilan
-        (2000000, 2749000, '2.000.000 - 2.749.000'),
-        (2750000, 3499000, '2.750.000 - 3.499.000'),
-        (3500000, 4249000, '3.500.000 - 4.249.000'),
-        (4250000, 4999999, '4.250.000 - 4.999.999'),
-        (5000000, float('inf'), '≥ 5.000.000')
-    ],
-    6: [  # Nilai Pinjaman
-        (1000000, 2499999, '1.000.000 - 2.499.999'),
-        (2500000, 3999999, '2.500.000 - 3.999.999'),
-        (4000000, 5499999, '4.000.000 - 5.499.999'),
-        (5500000, 6999999, '5.500.000 - 6.999.999'),
-        (7000000, float('inf'), '≥ 7.000.000')
-    ],
-    7: [  # Tenor
-        (3, 4, "3-4 bulan"),
-        (5, 6, "5-6 bulan"),
-        (7, 8, "7-8 bulan"),
-        (9, 10, "9-10 bulan"),
-        (11, 12, "11-12 bulan")
-    ]
-}
-
-
-    # Probabilitas untuk fitur numerik dengan rentang kustom
-    for index in numerical_indices:
-        attribute_probabilities[index] = {}
-        for label in class_labels:
-            filtered_data = [float(sample[index]) for sample in data if sample[-1] == label]
-
-            # Tentukan rentang berdasarkan kustom atau bagi default 4 kategori
-            if index in custom_ranges:
-                ranges = custom_ranges[index]
-            else:
-                min_val, max_val = min(filtered_data), max(filtered_data)
-                bin_size = (max_val - min_val) / 4
-                ranges = [
-                    (min_val, min_val + bin_size, "Sangat Rendah"),
-                    (min_val + bin_size, min_val + 2*bin_size, "Rendah"),
-                    (min_val + 2*bin_size, min_val + 3*bin_size, "Sedang"),
-                    (min_val + 3*bin_size, float('inf'), "Tinggi")
-                ]
-
-            # Hitung jumlah dalam setiap rentang
-            range_counts = {label: 0 for _, _, label in ranges}
-            for value in filtered_data:
-                for min_val, max_val, range_label in ranges:
-                    if min_val <= value <= max_val:
-                        range_counts[range_label] += 1
-                        break
-
-            # Konversi ke probabilitas
-            total_samples = len(filtered_data)
-            attribute_probabilities[index][label] = {
-                range_label: count / total_samples
-                for range_label, count in range_counts.items()
-            }
-
-    return attribute_probabilities
-
-
-# Fungsi tambahan untuk confusion matrix
-def calculate_confusion_matrix(data, prior_probs, likelihoods_categorical, likelihoods_numerical, numerical_indices, class_labels):
-    confusion_matrix = {label: {l: 0 for l in class_labels} for label in class_labels}
-    for sample in data:
-        true_label = sample[-1]
-        predicted_label = naive_bayes_predict(sample[:-1], prior_probs, likelihoods_categorical, likelihoods_numerical, numerical_indices, class_labels)
-        confusion_matrix[true_label][predicted_label] += 1
-    return confusion_matrix
-
-def calculate_accuracy(confusion_matrix):
-    correct_predictions = sum(confusion_matrix[label][label] for label in confusion_matrix)
-    total_predictions = sum(sum(row.values()) for row in confusion_matrix.values())
-    return (correct_predictions / total_predictions) * 100
-
-# Streamlit UI
-st.title("Klasifikasi Kelayakan Nasabah💰")
-
-st.write("Download data >>> https://shorturl.at/mhMqk <<<")
-
-# File upload
-uploaded_file = st.file_uploader("Upload data training Nasabah📤", type=["xlsx"])
-
-if uploaded_file:
-    st.subheader("Data Training Preview👀")
-    dataset = pd.read_excel(uploaded_file)
-    st.write(dataset.head())
-
-    # Konversi dataset ke list
-    data = dataset.values.tolist()
-    numerical_indices = [0, 4, 6, 7]  # Indeks data numerik
-    categorical_indices = [i for i in range(len(data[0]) - 1) if i not in numerical_indices]
-    class_labels = list(set(sample[-1] for sample in data))
-
-    # Hitung prior probabilities, likelihoods, dan probabilitas atribut
-    prior_probs = calculate_prior_probabilities(data)
-    likelihoods_categorical = calculate_likelihoods_categorical(data, categorical_indices, class_labels)
-    likelihoods_numerical = calculate_likelihoods_numerical(data, numerical_indices, class_labels)
-    attribute_probabilities = calculate_attribute_probabilities(data, numerical_indices, categorical_indices, class_labels)
-
-    # Tampilkan probabilitas atribut
-    st.subheader("Probabilitas Atribut untuk Setiap Kelas")
     
-    for index, atribut in enumerate(dataset.columns[:-1]):
-        st.write(f"### {atribut}")
-        
-        if index in numerical_indices:
-            # Untuk fitur numerik, tampilkan probabilitas setiap rentang
-            for label in class_labels:
-                st.write(f"Kelas {label}:")
-                probabilities = attribute_probabilities[index][label]
-                for value, prob in probabilities.items():
-                    st.write(f"- {value}: {prob:.2%}")
+    return attribute_probabilities, processed_data
+
+# Fungsi untuk menghitung probabilitas kelas dari input sample
+def naive_bayes_probabilities(sample, prior_probs, attribute_probabilities, class_labels, numerical_indices):
+    # Rentang kustom yang sama seperti pada training
+    custom_ranges = {
+        0: [  # Usia
+            (17, 22, "17-22"),
+            (23, 28, "23-28"),
+            (29, 34, "29-34"),
+            (35, 40, "35-40"),
+            (41, float('inf'), ">40")
+        ],
+        4: [  # Penghasilan
+            (2000000, 2749000, '2.000.000 - 2.749.000'),
+            (2750000, 3499000, '2.750.000 - 3.499.000'),
+            (3500000, 4249000, '3.500.000 - 4.249.000'),
+            (4250000, 4999999, '4.250.000 - 4.999.999'),
+            (5000000, float('inf'), '≥ 5.000.000')
+        ],
+        6: [  # Nilai Pinjaman
+            (1000000, 2499999, '1.000.000 - 2.499.999'),
+            (2500000, 3999999, '2.500.000 - 3.999.999'),
+            (4000000, 5499999, '4.000.000 - 5.499.999'),
+            (5500000, 6999999, '5.500.000 - 6.999.999'),
+            (7000000, float('inf'), '≥ 7.000.000')
+        ],
+        7: [  # Tenor
+            (3, 4, "3-4 bulan"),
+            (5, 6, "5-6 bulan"),
+            (7, 8, "7-8 bulan"),
+            (9, 10, "9-10 bulan"),
+            (11, 12, "11-12 bulan")
+        ]
+    }
+
+    # Konversi sample input
+    for idx in numerical_indices:
+        val = float(sample[idx])
+        if idx in custom_ranges:
+            sample[idx] = categorize_numerical_value(val, custom_ranges[idx])
         else:
-            # Untuk fitur kategorikal, tampilkan probabilitas setiap value
-            for label in class_labels:
-                st.write(f"Kelas {label}:")
-                probabilities = attribute_probabilities[index][label]
-                for value, prob in probabilities.items():
-                    st.write(f"- {value}: {prob:.2%}")
+            sample[idx] = str(val)
+
+    probabilities = {}
+    for label in class_labels:
+        # Mulai dari prior probability
+        probability = prior_probs[label]
+        # Kalikan dengan likelihood tiap fitur
+        for index, value in enumerate(sample):
+            value_prob = attribute_probabilities[index][label].get(value, 1e-6)
+            probability *= value_prob
+        probabilities[label] = probability
+    return probabilities
+
+st.title("Klasifikasi Kelayakan Nasabah 💰")
+
+st.write("Petunjuk:")
+st.write("1. Upload data training dalam format Excel.")
+st.write("2. Program akan memproses data training dengan membagi atribut numerik ke dalam rentang kategori dan menghitung probabilitas prior serta likelihood.")
+st.write("3. Masukkan data testing secara manual melalui UI. Tidak perlu upload file test data.")
+st.write("4. Program akan menampilkan probabilitas tiap kelas dan kelas dengan probabilitas tertinggi sebagai hasil prediksi.")
+st.write("5. Program juga menampilkan hasil probabilitas tiap atribut berdasarkan data training yang diunggah.")
+
+# Upload data training
+uploaded_file = st.file_uploader("Upload Data Training Nasabah (Excel)📤", type=["xlsx"])
+
+if uploaded_file is not None:
+    # Baca dataset
+    dataset = pd.read_excel(uploaded_file)
+    st.subheader("Data Training Preview👀")
+    st.write(dataset.head())
+    
+    data = dataset.values.tolist()
+    
+    # Indeks numerik & kategorikal (sesuaikan dengan dataset)
+    numerical_indices = [0, 4, 6, 7]
+    categorical_indices = [i for i in range(len(data[0]) - 1) if i not in numerical_indices]
+    
+    class_labels = list(set(sample[-1] for sample in data))
+    
+    # Hitung prior probability
+    prior_probs = calculate_prior_probabilities(data)
+    
+    # Hitung attribute probabilities
+    attribute_probabilities, processed_data = calculate_attribute_probabilities(
+        data, numerical_indices, categorical_indices, class_labels
+    )
+    
+    # Tampilkan hasil probabilitas tiap atribut
+    st.subheader("Probabilitas Tiap Atribut Berdasarkan Data Training")
+    columns = dataset.columns.tolist()
+    
+    for i in range(len(columns) - 1):
+        st.write(f"**Atribut: {columns[i]}**")
+        # Ambil nilai-nilai unik dari atribut ini
+        # value_list untuk menata baris
+        all_values = set()
+        for label in class_labels:
+            for val in attribute_probabilities[i][label].keys():
+                all_values.add(val)
+        all_values = list(all_values)
         
+        # Buat dataframe: index = nilai atribut, columns = kelas, values = probabilitas
+        df_prob = pd.DataFrame(index=all_values, columns=class_labels)
+        for val in all_values:
+            for label in class_labels:
+                df_prob.loc[val, label] = attribute_probabilities[i][label].get(val, 0.0)
+        
+        # Tampilkan dataframe
+        st.dataframe(df_prob.style.format("{:.2%}"))
         st.write("---")
-
-    st.subheader("Confusion Matrix dan Akurasi")
-    confusion_matrix = calculate_confusion_matrix(data, prior_probs, likelihoods_categorical, likelihoods_numerical, numerical_indices, class_labels)
-    st.write("Confusion Matrix:")
-    st.write(pd.DataFrame(confusion_matrix))
-
-    accuracy = calculate_accuracy(confusion_matrix)
-    st.success(f"Akurasi Model: {accuracy:.2f}%")
-
-    st.subheader("Prediksi dan Evaluasi")
-    st.subheader("Masukkan Data Nasabah untuk Prediksi")
-    sample_to_predict = []
+    
+    st.subheader("Input Data Testing")
+    st.write("Masukkan data testing di bawah ini:")
     input_prompts = [
         "Usia (numerik)", "Jenis Kelamin (L/P)", "Status Perkawinan", "Profesi",
         "Penghasilan (numerik)", "Status Pinjaman", "Nilai Pinjam (numerik)", "Tenor (numerik)"
     ]
-
+    
+    sample_to_predict = []
     for prompt in input_prompts:
-        value = st.text_input(f"{prompt}:")
+        value = st.text_input(prompt)
         sample_to_predict.append(value)
-
-    if st.button("Prediksi Kelas"):
-        # Lakukan prediksi
-        predicted_class = naive_bayes_predict(sample_to_predict, prior_probs, likelihoods_categorical, likelihoods_numerical, numerical_indices, class_labels)
-        st.success(f"Kelas yang Diprediksi: {predicted_class}")
+    
+    if st.button("Prediksi"):
+        if all(v.strip() != "" for v in sample_to_predict):
+            # Hitung probabilitas setiap kelas
+            probs = naive_bayes_probabilities(sample_to_predict, prior_probs, attribute_probabilities, class_labels, numerical_indices)
+            
+            # Tampilkan probabilitas setiap kelas
+            st.subheader("Probabilitas Setiap Kelas:")
+            for cls in class_labels:
+                st.write(f"Kelas {cls}: {probs[cls]:.6f}")
+            
+            # Tentukan kelas dengan probabilitas tertinggi
+            predicted_class = max(probs, key=probs.get)
+            st.success(f"Kelas yang Diprediksi: {predicted_class}")
+        else:
+            st.error("Mohon isi semua atribut terlebih dahulu.")
 
 st.markdown("""
 <h3 style="text-align: center;">>>> Kelompok 2 <<<</h3>
@@ -241,7 +232,3 @@ st.markdown("""
 <p style="text-align: center;">2. Septaro Travian Gadha (23081010270)</p>
 <p style="text-align: center;">3. Alvino Dwi Nengku Wijaya (23081010284)</p>
 """, unsafe_allow_html=True)
-
-
-#code by kelompok 2 |2301010186, 2301010270, 2301010284|
-    
