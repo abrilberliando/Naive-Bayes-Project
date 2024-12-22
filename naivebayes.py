@@ -18,10 +18,9 @@ def categorize_numerical_value(value, ranges):
         min_val, max_val, label = r
         if min_val <= value <= max_val:
             return label
-    # Jika tidak masuk ke rentang manapun
     return ranges[-1][2]
 
-# Fungsi untuk menghitung probabilitas likelihood setiap atribut
+# Fungsi untuk menghitung probabilitas atribut (likelihood)
 def calculate_attribute_probabilities(data, numerical_indices, categorical_indices, class_labels):
     attribute_probabilities = {}
 
@@ -62,11 +61,12 @@ def calculate_attribute_probabilities(data, numerical_indices, categorical_indic
     for sample in data:
         new_sample = sample.copy()
         for idx in numerical_indices:
+            # Pastikan nilai bisa diubah ke float
             val = float(new_sample[idx])
             if idx in custom_ranges:
                 new_sample[idx] = categorize_numerical_value(val, custom_ranges[idx])
             else:
-                # Jika tidak ada custom range, fallback bisa ditambahkan.
+                # Jika tidak ada custom range, ubah menjadi string (fallback)
                 new_sample[idx] = str(val)
         processed_data.append(new_sample)
 
@@ -74,22 +74,19 @@ def calculate_attribute_probabilities(data, numerical_indices, categorical_indic
     for index in range(len(processed_data[0]) - 1):
         attribute_probabilities[index] = {}
         for label in class_labels:
-            filtered_data = [sample for sample in processed_data if sample[-1] == label]
+            filtered_data = [s for s in processed_data if s[-1] == label]
             total_samples = len(filtered_data)
             value_counts = {}
-            for sample in filtered_data:
-                value = sample[index]
+            for s in filtered_data:
+                value = s[index]
                 value_counts[value] = value_counts.get(value, 0) + 1
-            
             attribute_probabilities[index][label] = {
                 val: count / total_samples for val, count in value_counts.items()
             }
-    
+
     return attribute_probabilities, processed_data
 
-# Fungsi untuk menghitung probabilitas kelas dari input sample
 def naive_bayes_probabilities(sample, prior_probs, attribute_probabilities, class_labels, numerical_indices):
-    # Rentang kustom yang sama seperti pada training
     custom_ranges = {
         0: [  # Usia
             (17, 22, "17-22"),
@@ -131,74 +128,128 @@ def naive_bayes_probabilities(sample, prior_probs, attribute_probabilities, clas
 
     probabilities = {}
     for label in class_labels:
-        # Mulai dari prior probability
         probability = prior_probs[label]
-        # Kalikan dengan likelihood tiap fitur
         for index, value in enumerate(sample):
-            value_prob = attribute_probabilities[index][label].get(value, 1e-6)
+            value_prob = attribute_probabilities[index][label].get(value, 1e-6)  # Laplace smoothing
             probability *= value_prob
         probabilities[label] = probability
     return probabilities
 
+def calculate_accuracy(true_labels, predicted_labels):
+    correct = sum(t == p for t, p in zip(true_labels, predicted_labels))
+    accuracy = (correct / len(true_labels)) * 100
+    return accuracy
+
 st.title("Klasifikasi Kelayakan Nasabah 💰")
 
 st.write("Petunjuk:")
-st.write("1. Download data training terlebih dahulu : https://shorturl.at/mhMqk")
-st.write("2. Upload data training dalam format Excel.")
-st.write("3. Program akan memproses data training dengan membagi atribut numerik ke dalam rentang kategori dan menghitung probabilitas prior serta likelihood.")
-st.write("4. Masukkan data testing secara manual melalui UI. Tidak perlu upload file test data.")
-st.write("5. Program akan menampilkan probabilitas tiap kelas dan kelas dengan probabilitas tertinggi sebagai hasil prediksi.")
-st.write("6. Program juga menampilkan hasil probabilitas tiap atribut berdasarkan data training yang diunggah.")
+st.write("1. Download dataset https://shorturl.at/G353b")
+st.write("2. Upload data")
+st.write("3. Program akan membagi data menjadi data training (438) dan data testing (146).")
+st.write("4. Program akan memproses data training dengan menghitung probabilitas atribut.")
+st.write("5. Program akan menampilkan hasil probabilitas atribut, prediksi, serta akurasi data training dan data testing.")
+st.write("6. Uji data kamu untuk kelayakan peminjaman!")
 
-# Upload data training
-uploaded_file = st.file_uploader("Upload Data Training Nasabah (Excel)📤", type=["xlsx"])
+uploaded_file = st.file_uploader("Upload Dataset Nasabah (Excel)📤", type=["xlsx"])
 
 if uploaded_file is not None:
-    # Baca dataset
     dataset = pd.read_excel(uploaded_file)
-    st.subheader("Data Training Preview👀")
-    st.write(dataset.head())
+    
+    # Debug info
+    st.write("**Data Shape:**", dataset.shape)
+    st.write("**Columns:**", dataset.columns.tolist())
+    
+    st.subheader("Data Preview👀")
+    st.write(dataset)  # Show first 10 rows for verification
     
     data = dataset.values.tolist()
     
-    # Indeks numerik & kategorikal (sesuaikan dengan dataset)
-    numerical_indices = [0, 4, 6, 7]
-    categorical_indices = [i for i in range(len(data[0]) - 1) if i not in numerical_indices]
-    
-    class_labels = list(set(sample[-1] for sample in data))
-    
-    # Hitung prior probability
-    prior_probs = calculate_prior_probabilities(data)
-    
-    # Hitung attribute probabilities
-    attribute_probabilities, processed_data = calculate_attribute_probabilities(
-        data, numerical_indices, categorical_indices, class_labels
-    )
-    
-    # Tampilkan hasil probabilitas tiap atribut
-    st.subheader("Probabilitas Tiap Atribut Berdasarkan Data Training")
-    columns = dataset.columns.tolist()
-    
-    for i in range(len(columns) - 1):
-        st.write(f"**Atribut: {columns[i]}**")
-        # Ambil nilai-nilai unik dari atribut ini
-        # value_list untuk menata baris
-        all_values = set()
-        for label in class_labels:
-            for val in attribute_probabilities[i][label].keys():
-                all_values.add(val)
-        all_values = list(all_values)
+    total_rows = len(data)
+    if total_rows < 584:
+        st.error("Dataset harus memiliki setidaknya 585 baris data (termasuk header).")
+    else:
+        # Split data into training and testing
+        training_data = data[1:439]  # Baris 2 sampai 439 (438 baris)
+        testing_data = data[438:585]  # Baris 440 sampai 585 (146 baris)
         
-        # Buat dataframe: index = nilai atribut, columns = kelas, values = probabilitas
-        df_prob = pd.DataFrame(index=all_values, columns=class_labels)
-        for val in all_values:
+        st.subheader("Data Training (438 Baris)")
+        st.write(pd.DataFrame(training_data, columns=dataset.columns))
+        
+        st.subheader("Data Testing (146 Baris)")
+        st.write(pd.DataFrame(testing_data, columns=dataset.columns))
+
+        # Calculate and display prior probabilities for training data
+        training_prior_probs = calculate_prior_probabilities(training_data)
+        st.subheader("Probabilitas Prior Data Training")
+        training_prior_df = pd.DataFrame(list(training_prior_probs.items()), 
+                                       columns=['Kelas', 'Probabilitas Prior'])
+        st.write(training_prior_df.style.format({'Probabilitas Prior': '{:.2%}'}))
+        
+        # Calculate and display prior probabilities for testing data
+        testing_prior_probs = calculate_prior_probabilities(testing_data)
+        st.subheader("Probabilitas Prior Data Testing")
+        testing_prior_df = pd.DataFrame(list(testing_prior_probs.items()), 
+                                      columns=['Kelas', 'Probabilitas Prior'])
+        st.write(testing_prior_df.style.format({'Probabilitas Prior': '{:.2%}'}))
+        
+        # Definisikan indeks numerik dan kategorikal
+        numerical_indices = [0, 4, 6, 7]  # Usia(0), Penghasilan(4), Nilai Pinjam(6), Tenor(7)
+        categorical_indices = [i for i in range(len(data[0]) - 1) if i not in numerical_indices]
+        
+        class_labels = list(set(sample[-1] for sample in training_data))
+        prior_probs = calculate_prior_probabilities(training_data)
+        
+        attribute_probabilities, processed_training_data = calculate_attribute_probabilities(
+            training_data, numerical_indices, categorical_indices, class_labels
+        )
+        
+        # Tampilkan hasil probabilitas tiap atribut
+        st.subheader("Probabilitas Tiap Atribut Berdasarkan Data Training")
+        columns = dataset.columns.tolist()
+        
+        for i in range(len(columns) - 1):
+            st.write(f"**Atribut: {columns[i]}**")
+            all_values = set()
             for label in class_labels:
-                df_prob.loc[val, label] = attribute_probabilities[i][label].get(val, 0.0)
+                for val in attribute_probabilities[i][label].keys():
+                    all_values.add(val)
+            all_values = sorted(all_values)  # Sorting for better readability
+            
+            df_prob = pd.DataFrame(index=all_values, columns=class_labels)
+            for val in all_values:
+                for label in class_labels:
+                    df_prob.loc[val, label] = attribute_probabilities[i][label].get(val, 0.0)
+            
+            st.dataframe(df_prob.style.format("{:.2%}"))
+            st.write("---")
         
-        # Tampilkan dataframe
-        st.dataframe(df_prob.style.format("{:.2%}"))
-        st.write("---")
-    
+        # Hitung akurasi pada data training
+        training_true_labels = [row[-1] for row in training_data]
+        training_predictions = []
+        for row in training_data:
+            sample_train = row[:-1]
+            probs_train = naive_bayes_probabilities(sample_train, prior_probs, attribute_probabilities, class_labels, numerical_indices)
+            pred_train = max(probs_train, key=probs_train.get)
+            training_predictions.append(pred_train)
+        
+        # Proses data testing
+        st.subheader("Hasil Prediksi Data Testing")
+        testing_true_labels = [row[-1] for row in testing_data]
+        testing_predictions = []
+        for row in testing_data:
+            sample_test = row[:-1]
+            probs_test = naive_bayes_probabilities(sample_test, prior_probs, attribute_probabilities, class_labels, numerical_indices)
+            predicted_class = max(probs_test, key=probs_test.get)
+            testing_predictions.append(predicted_class)
+        
+        result_df = pd.DataFrame(testing_data, columns=dataset.columns)
+        result_df['Prediksi Kelas'] = testing_predictions
+        st.write(result_df)
+        
+        # Hitung akurasi data testing
+        testing_accuracy = calculate_accuracy(testing_true_labels, testing_predictions)
+        st.write(f"**Akurasi pada Data Testing:** {testing_accuracy:.2f}%")
+
     st.subheader("Input Data Testing")
     st.write("Masukkan data testing di bawah ini:")
     input_prompts = [
