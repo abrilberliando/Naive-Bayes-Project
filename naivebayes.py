@@ -185,13 +185,6 @@ if uploaded_file is not None:
                                        columns=['Kelas', 'Probabilitas Prior'])
         st.write(training_prior_df.style.format({'Probabilitas Prior': '{:.2%}'}))
         
-        # Calculate and display prior probabilities for testing data
-        testing_prior_probs = calculate_prior_probabilities(testing_data)
-        st.subheader("Probabilitas Prior Data Testing")
-        testing_prior_df = pd.DataFrame(list(testing_prior_probs.items()), 
-                                      columns=['Kelas', 'Probabilitas Prior'])
-        st.write(testing_prior_df.style.format({'Probabilitas Prior': '{:.2%}'}))
-        
         # Definisikan indeks numerik dan kategorikal
         numerical_indices = [0, 4, 6, 7]  # Usia(0), Penghasilan(4), Nilai Pinjam(6), Tenor(7)
         categorical_indices = [i for i in range(len(data[0]) - 1) if i not in numerical_indices]
