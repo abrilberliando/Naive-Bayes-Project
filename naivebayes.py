@@ -169,7 +169,7 @@ if uploaded_file is not None:
         st.error("Dataset harus memiliki setidaknya 585 baris data (termasuk header).")
     else:
         # Split data into training and testing
-        training_data = data[1:439]  # Baris 2 sampai 439 (438 baris)
+        training_data = data[0:438]  # Baris 2 sampai 439 (438 baris)
         testing_data = data[438:585]  # Baris 440 sampai 585 (146 baris)
         
         st.subheader("Data Training (438 Baris)")
@@ -223,36 +223,34 @@ if uploaded_file is not None:
             st.dataframe(df_prob.style.format("{:.2%}"))
             st.write("---")
         
-        # Hitung akurasi pada data training
-        training_true_labels = [row[-1] for row in training_data]
-        training_predictions = []
-        for row in training_data:
-            sample_train = row[:-1]
-            probs_train = naive_bayes_probabilities(sample_train, prior_probs, attribute_probabilities, class_labels, numerical_indices)
-            pred_train = max(probs_train, key=probs_train.get)
-            training_predictions.append(pred_train)
-        
         # Proses data testing
         st.subheader("Hasil Prediksi Data Testing")
         testing_true_labels = [row[-1] for row in testing_data]
         testing_predictions = []
+        testing_probs_layak = []
+        testing_probs_tidak_layak = []
+
         for row in testing_data:
             sample_test = row[:-1]
             probs_test = naive_bayes_probabilities(sample_test, prior_probs, attribute_probabilities, class_labels, numerical_indices)
             predicted_class = max(probs_test, key=probs_test.get)
             testing_predictions.append(predicted_class)
-        
+            testing_probs_layak.append(f"{probs_test.get('Layak', 0):.10f}")
+            testing_probs_tidak_layak.append(f"{probs_test.get('Tidak Layak', 0):.10f}")
+
         result_df = pd.DataFrame(testing_data, columns=dataset.columns)
+        result_df['Probabilitas Layak'] = testing_probs_layak
+        result_df['Probabilitas Tidak Layak'] = testing_probs_tidak_layak
         result_df['Prediksi Kelas'] = testing_predictions
+
+        st.write("Hasil Prediksi:")
         st.write(result_df)
-        
-        # Hitung akurasi data testing
+
         testing_accuracy = calculate_accuracy(testing_true_labels, testing_predictions)
         st.write(f"**Akurasi pada Data Testing:** {testing_accuracy:.2f}%")
-
-    st.subheader("Input Data Testing")
-    st.write("Masukkan data testing di bawah ini:")
-    input_prompts = [
+        st.subheader("Input Data Testing")
+        st.write("Masukkan data testing di bawah ini:")
+        input_prompts = [
         "Usia (numerik)", "Jenis Kelamin (L/P)", "Status Perkawinan", "Profesi",
         "Penghasilan (numerik)", "Status Pinjaman", "Nilai Pinjam (numerik)", "Tenor (numerik)"
     ]
