@@ -143,7 +143,7 @@ def calculate_accuracy(true_labels, predicted_labels):
 st.title("Klasifikasi Kelayakan Nasabah 💰")
 
 st.write("Petunjuk:")
-st.write("1. Download dataset https://shorturl.at/G353b")
+st.write("1. Download dataset https://shorturl.at/lIfEW")
 st.write("2. Upload data")
 st.write("3. Program akan membagi data menjadi data training (438) dan data testing (146).")
 st.write("4. Program akan memproses data training dengan menghitung probabilitas atribut.")
